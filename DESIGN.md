@@ -7,13 +7,13 @@ What I do like about Tastypie
 * hydration/dehydration and serialization in general (tastypie.serializers.Serializer and tastypie.fields, full_hydrate and full_dehydrate in tastypie.resources)
 * input validation
 * the way it handles foreign keys and m2ms. (tastypie.fields)
-* modelresource should be built entirely on resource -- a subclass, not an entirely different way of doing things
+* modelresource built entirely on resource -- a subclass, not an entirely different way of doing things
 * URI-based / HATEOAS-compatible
 * authentication and authorization (though I also like my decorator-based approach from flask-apiserver)
 * caching, throttling, API-key auth
 * discovery
 * the fact that you can make resources for third-party classes, since you don't need to touch the original code.
-* the way it handles errors is pretty good (still outputting JSON except for the most fatal of errors) although I'd never send along a stack trace -- those should be for internal logs only.
+* the way it handles errors is pretty good (still outputting JSON except for the most fatal of errors)
 * OPTIONS support (recently)
 
 Where I would deviate from Tastypie

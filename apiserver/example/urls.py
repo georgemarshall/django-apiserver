@@ -11,6 +11,7 @@ class TOC(api.TOC):
 v1 = api.API('v1')
 v1.register(TOC)
 v1.register(organization.resources)
+v1.register(api.explorer.Explorer)
 
 urlpatterns = patterns('',
     (r'^', include(v1.urlconf)),

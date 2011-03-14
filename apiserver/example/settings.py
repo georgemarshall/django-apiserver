@@ -109,6 +109,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'organization',
     'fixture_generator',
+    'apiserver.explorer',
 )
 
 # A sample logging configuration. The only tangible logging

@@ -60,6 +60,13 @@ class Organizations(api.ModelCollection, Organization):
     class Meta(Organization.Meta):
         route = '/organizations'
 
+    def show(self, request, filters, format):
+        # testing whether we couldn't decide full=True on the fly, rather than on a per-class level
+        # 
+        # for field in self.base_fields.values():
+        #     field.full = True
+        
+        return super(Organizations, self).show(request, filters, format)
 
 # here solely to test OPTIONS
 @api.only("show", "destroy")
