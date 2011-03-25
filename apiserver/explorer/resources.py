@@ -3,31 +3,16 @@
 import re
 import urllib2
 import functools
-import simplejson
 from copy import copy
 from pygments import lexers, formatters, highlight
 
 from django.contrib.auth.models import User
 from django.views.generic.simple import direct_to_template
 from django.test.client import Client
-from django import forms
+from django.utils import simplejson
 
-#from utils.authentication import create_auth_string
-
-def create_auth_string(user, pw):
-    return "todo"
-
-web = Client()
-web.put = functools.partial(web.post, REQUEST_METHOD='PUT')
-
-# TODO: genericize this so users can provide their own "auto-password fill-in" mechanism for testing
-def get_password(username):
-    return username.split("@")[0]
-
-test_users = {}
-for user in User.objects.all():
-    test_users[user.username] = get_password(user.username)
-user_choices = zip(test_users.keys(), test_users.keys())
+import apiserver as api
+from apiserver.explorer.forms import RequestForm
 
 
 def get_base_uris(base):
@@ -35,52 +20,46 @@ def get_base_uris(base):
     data = simplejson.loads(content)
     return data
 
-try:
-    default_user = User.objects.latest('pk')
-except User.DoesNotExist:
-    default_user = None
 
-HEADERS = {
-    "HTTP_CONTENT_TYPE": "application/json",
-    "HTTP_ACCEPT": "application/json",
-    }
+class APIRequest(object):
+    HEADERS = {
+        "HTTP_CONTENT_TYPE": "application/json",
+        "HTTP_ACCEPT": "application/json",
+        }
+        
+    web = Client()
+    web.put = functools.partial(web.post, REQUEST_METHOD='PUT')
+
+    def __init__(self, endpoint, user=None):
+        self.headers = copy(self.HEADERS)
     
-if default_user:
-    HEADERS["HTTP_AUTHORIZATION"] = create_auth_string(*default_user)
+        if user:
+            self.headers["HTTP_AUTHORIZATION"] = api.utils.create_auth_string(*user)
 
-METHODS = (
-    ('get', 'GET'),
-    ('post', 'POST'),
-    ('put', 'PUT'),
-    ('delete', 'DELETE'),
-    )
+    def do(self, method, endpoint, data='', content_type='application/json', headers={}):
+        response = getattr(self.web, method)(endpoint, data=data, content_type=content_type, **headers)
+        return response, response.status_code       
 
+    # TODO
+    def as_curl(self):
+        return """curl http://{path}{endpoint} \
+            --request {method|upper} \
+            --header 'Content-Type: application/json' \{% if data %}
+            --data '{data}' \{% endif %}
+            --user {username}:{password}""".format(self.__dict__)
 
-class RequestForm(forms.Form):
-    method = forms.ChoiceField(choices=METHODS, initial='GET', required=False)
-    endpoint = forms.CharField(max_length=200, initial='/v1', required=False)
-    user = forms.ChoiceField(choices=user_choices, required=False) # initial=default_user[0]
-    data = forms.CharField(widget=forms.widgets.Textarea, initial='', required=False)
-
-
-def linkify(thing):
-    return '&quot;<a href="?endpoint={link}">{link}</a>&quot;'.format(link=thing.group(1))
-
-
-def prettify(json):
-    json = simplejson.loads(json)
-    json = simplejson.dumps(json, sort_keys=True, indent=4)
-    lexer = lexers.get_lexer_by_name("javascript")
-    formatter = formatters.HtmlFormatter()
-    html = highlight(json, lexer, formatter)
-    return re.sub('&quot;(/.+)&quot;', linkify, html)
-
-
-import apiserver as api
 
 class Explorer(api.Resource):
     class Meta:
         route = '/explorer'
+
+    def get_users(self):
+        """
+        If you provide some dummy users from which users may select, you can specify
+        those by overriding this method and returning a list of usernames.
+        (They'll still have to fill out the password field.)
+        """
+        return []
 
     def post(self, request, filters, format):
         return self.show(request, filters, format)
@@ -103,6 +82,7 @@ class Explorer(api.Resource):
 
         headers = copy(HEADERS)
         
+        default_user = False
         if default_user:
             user = form.data.get("user", default_user[0])
             pwd = test_users[user]
@@ -129,6 +109,7 @@ class Explorer(api.Resource):
             "response": response,
             "method": method,
             "username": user,
-            "password": get_password(user),
+            #"password": get_password(user),
             "data": form.data.get("data", ""),
+            "curl": request.as_curl(),
             })
