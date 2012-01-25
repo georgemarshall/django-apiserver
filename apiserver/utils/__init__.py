@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 from apiserver.utils.dict import dict_strip_unicode_keys
 from apiserver.utils.formatting import mk_datetime, format_datetime, format_date, format_time
 from apiserver.utils.urls import trailing_slash

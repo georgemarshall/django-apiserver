@@ -22,6 +22,7 @@ from django_filters import FilterSet
 
 from .models import Person, Organization
 
+
 # regular resource
 class MessageResource(api.Resource):
     class Meta:
@@ -92,7 +93,7 @@ class PeopleResource(api.ModelResource):
         queryset = Person.objects.all()
 
     # shows how you could customize the args or do other wacky things
-    # 
+    #
     # this example transforms the filter args, and uppercases the org name
     # before handing it off
     def show(self, request, filters, format):

@@ -1,10 +1,12 @@
 from fixture_generator import fixture_generator
 from . import models
 
+
 @fixture_generator(models.Organization)
 def test_organizations():
     models.Organization.objects.create(name="ACME")
     models.Organization.objects.create(name="REX")
+
 
 @fixture_generator(models.Person, requires=['organization.test_organizations', ])
 def test_people():

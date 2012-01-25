@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 import re
 import urllib2
 import functools
@@ -16,6 +14,7 @@ from utils.authentication import create_auth_string
 
 api = Client()
 api.put = functools.partial(api.post, REQUEST_METHOD='PUT')
+
 
 # TODO: genericize this so users can provide their own "auto-password fill-in" mechanism for testing
 def get_password(username):
@@ -84,13 +83,13 @@ def explorer(request):
     querystring_endpoint = request.GET.get("endpoint", "/v1/")
     endpoint = post_endpoint or querystring_endpoint
     form.fields.get('endpoint').initial = endpoint
-    
+
     user = form.data.get("user", default_user[0])
     pwd = test_users[user]
     headers = copy(HEADERS)
     headers["HTTP_AUTHORIZATION"] = create_auth_string(user, pwd)
     print "Relaying {method} request for {user} to {endpoint}".format(user=user, endpoint=endpoint, method=method.upper())
-    
+
     response = getattr(api, method)(endpoint, data=form.data.get('data', ''), content_type='application/json', **headers)
     status_code = response.status_code
     try:

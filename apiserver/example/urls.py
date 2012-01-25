@@ -3,6 +3,7 @@ from apiserver.resources import TOC
 
 from organization import resources
 
+
 class TOCResource(TOC):
     class Meta:
         route = ''

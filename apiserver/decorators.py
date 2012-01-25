@@ -1,9 +1,8 @@
-# encoding: utf-8
-
 import types
 from functools import wraps
 from django.http import HttpResponse
 from django.conf import settings
+
 
 class on_view(object):
     def __init__(self, fn):
@@ -11,8 +10,8 @@ class on_view(object):
 
     def decorate_fn(self, fn):
         return wraps(self.wrapper(fn))
-        
-    def decorate_cls(self, cls):    
+
+    def decorate_cls(self, cls):
         for name in cls.method_mapping.values():
             if hasattr(cls, name):
                 method = getattr(cls, name)
@@ -29,20 +28,21 @@ canned_error = {
     "error": getattr(settings, "APISERVER_CANNED_ERROR", "Sorry, this request could not be processed. This is usually not your fault. Please try again later.")
     }
 
+
 class on_error(on_view):
     """
     An error handling decorator. Usage:
-    
+
     @on_error(NoObjectsFound, InvalidSortError, 404)
     @on_error(IOError, 503, custom_response)
     def my_view():
         raise IOError("Database down for maintenance")
-    
+
     Works on Resource classes as well, in which case
-    the class decorator will decorate the 'show', 'create', 
+    the class decorator will decorate the 'show', 'create',
     'update' and 'destroy' methods.
     """
-    
+
     def __init__(self, *vargs):
         vargs = list(vargs)
         if isinstance(vargs[-1], types.FunctionType):
@@ -51,7 +51,7 @@ class on_error(on_view):
         else:
             self.message = lambda *vargs, **kwargs: canned_error
             self.status = vargs.pop()
-        
+
         self.exceptions = tuple(vargs)
 
     def decorate_fn(self, fn):
@@ -61,13 +61,14 @@ class on_error(on_view):
                 return fn(*vargs, **kwargs)
             except self.exceptions:
                 return self.message(*vargs, **kwargs), self.status
-                
+
         return safe_fn
+
 
 class only(on_view):
     """
     A shortcut decorator to only make certain methods available. Usage:
-    
+
     @only("show", "create")
     class Person(api.ModelResource):
         ...
@@ -75,7 +76,7 @@ class only(on_view):
 
     def __init__(self, *methods):
         self.methods = methods
-    
+
     def decorate_fn(self, fn):
         if fn.__name__ in self.methods + ('options',):
             return fn

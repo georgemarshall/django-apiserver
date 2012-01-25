@@ -8,6 +8,7 @@ from tastypie.validation import Validation
 
 from apiserver.serializers import Serializer
 
+
 # options that work in tastypie but have been removed from apiserver:
 # - allowed_methods (use a decorator)
 # - list_allowed_methods (use a decorator)
@@ -18,7 +19,7 @@ from apiserver.serializers import Serializer
 class ResourceOptions(object):
     """
     A configuration class for ``Resource``.
-    
+
     Provides sane defaults and the logic needed to augment these settings with
     the internal ``class Meta`` used on ``Resource`` subclasses.
     """
@@ -39,22 +40,22 @@ class ResourceOptions(object):
     excludes = []
     include_resource_uri = True
     include_absolute_url = False
-    
+
     # only applies to TOC resource
     resources = []
-    
+
     # only here for compatibility / deprecated
     api_name = None
     resource_name = ''
-    
+
     def __new__(cls, meta=None):
         overrides = {}
-        
+
         # Handle overrides.
         if meta:
             for override_name in dir(meta):
                 # No internals please.
                 if not override_name.startswith('_'):
                     overrides[override_name] = getattr(meta, override_name)
-               
+
         return object.__new__(type('ResourceOptions', (cls,), overrides))
