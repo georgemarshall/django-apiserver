@@ -81,6 +81,24 @@ class DeclarativeMetaclass(type):
         return new_class
 
 
+# views may return a status code in addition to a structured response;
+# they may also return just a status code or just a response;
+# for true customization, we can also deal with a regular HttpResponse
+def normalize_response(retval):
+    if isinstance(retval, tuple):
+        raw_response, status = retval
+    elif isinstance(retval, int):
+        status = retval
+        raw_response = {}
+    elif isinstance(retval, HttpResponse):
+        return retval
+    else:
+        raw_response = retval
+        status = 200
+
+    return raw_response, status
+
+
 # a Railsy RESTful resource
 class Resource(object):
     """
@@ -217,19 +235,9 @@ class Resource(object):
         raw_format, kwargs = utils.extract('__format', kwargs)
         retval = view(request, kwargs, raw_format)
 
-        # views may return a status code in addition to a structured response;
-        # they may also return just a status code or just a response;
-        # for true customization, we can also deal with a regular HttpResponse
-        if isinstance(retval, tuple):
-            raw_response, status = retval
-        elif isinstance(retval, int):
-            status = retval
-            raw_response = {}
-        elif isinstance(retval, HttpResponse):
-            return retval
-        else:
-            raw_response = retval
-            status = 200
+        # views may return different kinds of 'shorthand'
+        # responses that we have to normalize
+        raw_response, status = normalize_response(retval)
 
         format = self.determine_format(request, raw_format)
         return HttpResponse(self.serialize(request, raw_response, format), status=status)
@@ -376,18 +384,29 @@ class Resource(object):
         """
         return obj_list
 
-    def get_resource_uri(self, bundle_or_obj, format):
-        """
-        This needs to be implemented at the user level.
+    def get_resource_uri(self, bundle_or_obj, format=None):
+        if isinstance(bundle_or_obj, bundle.Bundle):
+            obj = bundle_or_obj.obj
+        else:
+            obj = bundle_or_obj
 
-        A ``return reverse("api_dispatch_detail", kwargs={'resource_name':
-        self.resource_name, 'pk': object.id})`` should be all that would
-        be needed.
+        if format:
+            format = '.' + format
+        else:
+            format = ''
 
-        ``ModelResource`` includes a full working version specific to Django's
-        ``Models``.
-        """
-        raise NotImplementedError()
+        filters = re.compile(self._meta.parsed_route).groupindex
+        if '__format' in filters:
+            del filters["__format"]
+        for attr in filters:
+            filters[attr] = utils.traverse(obj, attr)
+
+        try:
+            return reverse(self.name, kwargs=filters) + format
+        except NotImplementedError:
+            return None
+        except NoReverseMatch:
+            return None
 
     # TODO
     def get_resource_list_uri(self):
@@ -594,7 +613,7 @@ class Resource(object):
 
         return obj_list
 
-    def obj_get(self, request=None, **kwargs):
+    def obj_get(self, request=None, filters={}):
         """
         Fetches an individual object on the resource.
 
@@ -906,30 +925,6 @@ class ModelResource(Resource):
 
         return final_fields
 
-    def get_resource_uri(self, bundle_or_obj, format=None):
-        if isinstance(bundle_or_obj, bundle.Bundle):
-            obj = bundle_or_obj.obj
-        else:
-            obj = bundle_or_obj
-
-        if format:
-            format = '.' + format
-        else:
-            format = ''
-
-        filters = re.compile(self._meta.parsed_route).groupindex
-        if '__format' in filters:
-            del filters["__format"]
-        for attr in filters:
-            filters[attr] = utils.traverse(obj, attr)
-
-        try:
-            return reverse(self.name, kwargs=filters) + format
-        except NotImplementedError:
-            return None
-        except NoReverseMatch:
-            return None
-
     def get_object_list(self, request):
         """
         An ORM-specific implementation of ``get_object_list``.
@@ -950,7 +945,6 @@ class ModelResource(Resource):
         except ValueError, e:
             raise NotFound("Invalid resource lookup data provided (mismatched type).")
 
-        # apply querystring-based filters (doesn't currently work)
         if hasattr(self, 'FilterSet'):
             filterset = self.FilterSet(request.GET, queryset=qs)
             qs = filterset.qs
