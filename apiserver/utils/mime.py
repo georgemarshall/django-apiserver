@@ -19,7 +19,7 @@ def determine_format(request, format, serializer, default_format='application/js
         return serializer.get_mime_for_format(format)
 
     # If callback parameter is present, use JSONP.
-    if request.GET.has_key('callback'):
+    if 'callback' in request.GET:
         return serializer.get_mime_for_format('jsonp')
 
     # Try to fallback on the Accepts header.
