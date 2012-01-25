@@ -1,4 +1,4 @@
 from settings import *
-INSTALLED_APPS.append('alphanumeric')
+INSTALLED_APPS += ('alphanumeric',)
 
 ROOT_URLCONF = 'alphanumeric.urls'
