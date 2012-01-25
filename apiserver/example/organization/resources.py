@@ -1,13 +1,6 @@
-# encoding: utf-8
-
-import apiserver as api
-from organization import models as organization
-
-import django_filters as filters
-
 """
 Visit these URLs to see how it works:
-- /organizations.json 
+- /organizations.json
 - /organizations/acme/people.json
 - /organizations/ACME/people/1.json
 - /organizations/REX/people/2.json
@@ -24,71 +17,96 @@ Any other differences (e.g. no Meta, no hydrate/dehydrate)
 purely for the sake of being able to quickly put together
 a prototype.
 """
+import apiserver as api
+from django_filters import FilterSet
+
+from .models import Person, Organization
 
 # regular resource
-class Message(api.Resource):
+class MessageResource(api.Resource):
     class Meta:
         route = '/messages/<name:s>'
-    
+
     def show(self, request, filters, format):
-        return {"message": ["hello there", "cowboy"]}
+        name, filters = api.utils.extract('name', filters)
+        return {'message': 'hello there %s' % name}
 
 
 # regular model resource
-class Everybody(api.ModelResource):
+class PersonResource(api.ModelResource):
     class Meta:
         route = '/everybody/<pk:#>'
-        queryset = organization.Person.objects.all()
+        queryset = Person.objects.all()
+
+
+class PersonCollection(api.ModelCollection, PersonResource):
+    class FilterSet(FilterSet):
+        class Meta:
+            model = Person
+
+    class Meta(PersonResource.Meta):
+        route = '/everybody'
 
 
 # model resource
-class Organization(api.ModelResource):
-    people = api.fields.ToManyField('organization.resources.Person', 'people')
+class OrganizationResource(api.ModelResource):
+    people = api.fields.ToManyField('organization.resources.PersonResource', 'people')
 
     class Meta:
         route = '/organizations/<name:s>'
-        queryset = organization.Organization.objects.all()
+        queryset = Organization.objects.all()
+
+    def show(self, request, filters, format):
+        name, filters = api.utils.extract('name', filters)
+        filters['name'] = name.upper()
+        return super(OrganizationResource, self).show(request, filters, format)
 
 
 # collection resource
-class Organizations(api.ModelCollection, Organization):
-    class FilterSet(filters.FilterSet):
+class OrganizationCollection(api.ModelCollection, OrganizationResource):
+    class FilterSet(FilterSet):
         class Meta:
-            model = organization.Organization
+            model = Organization
             fields = ['name']
 
-    class Meta(Organization.Meta):
+    class Meta(OrganizationResource.Meta):
         route = '/organizations'
 
 
 # here solely to test OPTIONS
-@api.only("show", "destroy")
-class OrganizationsOptions(Organizations):
-    class Meta(Organizations.Meta):
+@api.only('show', 'destroy')
+class OrganizationsOptions(OrganizationCollection):
+    class Meta(OrganizationCollection.Meta):
         route = '/organization_options'
 
     def show(self, request, filters, format):
-        return Organizations.options(self, request, filters, format)
+        return OrganizationCollection.options(self, request, filters, format)
+
 
 # deep model resource
-class Person(api.ModelResource):
-    organization = api.fields.ToOneField(Organization, 'organization')
+class PeopleResource(api.ModelResource):
+    organization = api.fields.ToOneField(OrganizationResource, 'organization')
 
     class Meta:
         route = '/organizations/<organization__name:s>/people/<pk:#>'
-        queryset = organization.Person.objects.all()
+        queryset = Person.objects.all()
 
-
-# deep collection resource
-class People(api.ModelCollection, Person):
-    class Meta(Person.Meta):
-        route = '/organizations/<org:s>/people'
-            
     # shows how you could customize the args or do other wacky things
     # 
     # this example transforms the filter args, and uppercases the org name
     # before handing it off
     def show(self, request, filters, format):
-        organization, filters = api.utils.extract('org', filters)
+        organization, filters = api.utils.extract('organization__name', filters)
         filters['organization__name'] = organization.upper()
-        return super(People, self).show(request, filters, format)
+        return super(PeopleResource, self).show(request, filters, format)
+
+
+# deep collection resource
+class PeopleCollection(api.ModelCollection, PeopleResource):
+    class Meta(PersonResource.Meta):
+        route = '/organizations/<organization__name:s>/people'
+
+    def show(self, request, filters, format):
+        organization, filters = api.utils.extract('organization__name', filters)
+        filters['organization__name'] = organization.upper()
+        return super(PeopleCollection, self).show(request, filters, format)

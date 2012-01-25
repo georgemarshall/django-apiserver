@@ -1,7 +1,5 @@
-# encoding: utf-8
-
-import models
 from fixture_generator import fixture_generator
+from . import models
 
 @fixture_generator(models.Organization)
 def test_organizations():

@@ -1,17 +1,18 @@
-from django.conf.urls.defaults import *
+from apiserver.api import API
+from apiserver.resources import TOC
 
-import apiserver as api
-import organization
+from organization import resources
 
-class TOC(api.TOC):
+class TOCResource(TOC):
     class Meta:
         route = ''
-        resources = [organization.resources.Organizations]
+        resources = [
+            resources.OrganizationCollection,
+            resources.PersonCollection,
+        ]
 
-v1 = api.API('v1')
-v1.register(TOC)
-v1.register(organization.resources)
+v1 = API(version='v1')
+v1.register(TOCResource)
+v1.register(resources)
 
-urlpatterns = patterns('',
-    (r'^', include(v1.urlconf)),
-)
+urlpatterns = v1.urlconf

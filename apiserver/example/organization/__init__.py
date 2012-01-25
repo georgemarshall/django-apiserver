@@ -1,4 +1,2 @@
-# encoding: utf-8
-
-import models
-import resources
+from . import models
+from . import resources
