@@ -78,7 +78,7 @@ class OrganizationCollection(api.ModelCollection, OrganizationResource):
         #
         # for field in self.base_fields.values():
         #     field.full = True
-        return super(Organizations, self).show(request, filters, format)
+        return super(OrganizationCollection, self).show(request, filters, format)
 
 
 # here solely to test OPTIONS
